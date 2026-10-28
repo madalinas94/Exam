@@ -16,3 +16,10 @@ Proiect pentru examenul final (Curs Vibe Coding): aplicație într-un singur fi�
 
 ## Extra
 Ecran de bun venit cu vilă 3D (zi/noapte, sunet ambiental), română/engleză, vizualizare 3D și plimbare la persoana întâi, moodboard, buget estimativ, formular de contact, Concepte 2030, Atelier Signature, Concierge AI cu voce.
+
+## Securitate
+- **Content Security Policy:** pagina poate rula doar propriul script (verificat prin hash SHA-256) și bibliotecile 3D/PDF din CDN-uri aprobate; poate trimite date doar către `api.anthropic.com`. Codul injectat, `eval` și trimiterea de date către alte site-uri sunt blocate.
+- **Subresource Integrity:** bibliotecile three.js și jsPDF sunt verificate prin hash SHA-384; o copie modificată este refuzată și se încarcă automat următorul CDN.
+- Validarea datelor, protecție anti-prompt-injection, afișare ca text (anti-XSS), câmp anti-spam, limită de încercări la codul Signature.
+- Cheia API nu este în cod; rămâne doar în browserul celui care o introduce.
+- **Dacă modificați scriptul din `index.html`**, recalculați hash-ul din `script-src` (în meta-ul CSP), altfel browserul îl blochează.
