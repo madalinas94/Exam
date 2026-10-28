@@ -2,12 +2,16 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
+<!-- Security: Content Security Policy. The inline script block is allowed only by its SHA-256 hash —
+     if you edit that script, recompute the hash, otherwise the browser will block it.
+     Add your form endpoint's domain to connect-src if you set LEAD_ENDPOINT. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vYTFmf2omt+XUOhtIN9hL8EQ6fOOBJXf+1Vd34Myo+4=' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src https://api.anthropic.com; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Atelier Liniar — Arhitectură de interior</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <style>
 :root{
   --bg:#0C0B09; --bg2:#11100D; --surface:#16140F; --surface2:#1D1A14; --raise:#232019;
@@ -1267,7 +1271,16 @@ function toast(msg, kind = '') {
 }
 window.addEventListener('error', e => { console.error(e.error || e.message); toast(t('tErr'), 'err'); });
 window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast(t('tErr2') + (e.reason?.message || '?'), 'err'); });
-function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+/* Loads a CDN library with Subresource Integrity: the browser refuses the file if its bytes differ from the expected hash. */
+function loadScript(src, integrity) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src;
+    if (integrity) { s.integrity = integrity; s.crossOrigin = 'anonymous'; }
+    s.referrerPolicy = 'no-referrer'; s.onload = res; s.onerror = () => { s.remove(); rej(new Error('load ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+const SRI = { three: 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu', jspdf: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk' };
 
 /* Untrusted text: strip markup / control chars, collapse whitespace, cap length. */
 function clean(s, max = 400) { return String(s ?? '').replace(/[\u0000-\u001F\u007F<>{}`\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
@@ -1361,7 +1374,7 @@ function goStep(n) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (n === 2) { renderBoard(); refreshContour(); }
   if (n === 3) renderStep3();
-  if (n === 4) renderResults();
+  if (n === 4) { renderResults(); ensureJsPDF(); }
 }
 function unlock(n) { state.maxStep = Math.max(state.maxStep, n); }
 function syncStepper() { $$('#stepper button').forEach(b => { const k = +b.dataset.step; b.disabled = k > state.maxStep; if (k > state.maxStep) b.classList.remove('done'); }); }
@@ -2196,8 +2209,8 @@ let threeP = null;
 function ensureThree() {
   if (window.THREE) return Promise.resolve(window.THREE);
   if (!threeP) threeP = (async () => {
-    for (const src of ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', 'https://unpkg.com/three@0.128.0/build/three.min.js']) {
-      try { await loadScript(src); if (window.THREE) return window.THREE; } catch (e) {}
+    for (const src of ['https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', 'https://unpkg.com/three@0.128.0/build/three.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js']) {
+      try { await loadScript(src, SRI.three); if (window.THREE) return window.THREE; } catch (e) {}
     }
     return null;
   })();
@@ -2666,8 +2679,8 @@ async function pageMood(n, total) {
 }
 async function ensureJsPDF() {
   if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-  for (const src of ['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js', 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js']) {
-    try { await loadScript(src); if (window.jspdf?.jsPDF) return window.jspdf.jsPDF; } catch (e) {}
+  for (const src of ['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js', 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']) {
+    try { await loadScript(src, SRI.jspdf); if (window.jspdf?.jsPDF) return window.jspdf.jsPDF; } catch (e) {}
   }
   return null;
 }
